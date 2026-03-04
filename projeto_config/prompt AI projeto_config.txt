@@ -1,0 +1,30 @@
+Estou começando um projeto em go na pasta projeto_config. A ideia é que esse app rodando no meu WSL autenticado no GCP e usando comandos gcloud quando necessário possa automatizar a criação de novos projetos no GCP.
+
+Criei um arquivo main.go inicial, preciso rodar  go mod init projeto_config ? o que mais devo fazer para iniciar o projeto?
+
+Para criar um novo projeto temos 4 passos que devemos cumprir, inicialmente podemos  trabalhar no passo 1 e assim que funcional partir para os demais passos:
+
+1) criar as pastas no manage resources
+
+a organização é eletrobras.com ID 727440331682 e a pasta que vamos trabalhar é fldr-scge, abaixo dela criamos novas pastas usando o novo projeto como nome das subpastas e dos projetos como a seguir:
+ 
+fldr-<nome do projejo>
+     fldr-dev
+        elet-<nome do projeto>-dev
+     fldr-qld
+        elet-<nome do projeto>-qld
+     fldr-prd
+        elet-<nome do projeto>-prd
+ 
+2) colocar as labels nos projetos:
+    ambiente:  dev ou qld ou prd
+    companhia : elet
+    projeto: <nome do projeto>
+ 
+3) habilitar as APIs em cada projeto
+     Compute Engine
+     Service Networking
+ 
+4) Atachar os projeto nas redes spokes
+    entrar na rede spoke-<ambiente>
+    ir em VPC  -> VPC Compartilhada -> Atachar o projeto do ambiente respectivo
