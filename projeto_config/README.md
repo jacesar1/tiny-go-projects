@@ -127,12 +127,16 @@ Além disso, oferece opção de habilitar APIs adicionais:
 
 **Nota:** Requer que o projeto já tenha sido criado no passo 1 (com Billing Account vinculado automaticamente).
 
-### 🔗 Passo 4: Atachar nas Redes Spokes (Em desenvolvimento)
+### 🔗 Passo 4: Atachar nas Redes Spokes ✅
 
-Associa cada projeto à VPC spoke do seu ambiente:
-- dev → spoke-dev
-- qld → spoke-qld  
-- prd → spoke-prd
+Associa automaticamente cada projeto à sua VPC spoke correspondente (Shared VPC):
+
+**Mapeamento de ambientes:**
+- dev: `elet-<nome>-dev` → Shared VPC `vpc-spoke-dev` (host project ID: `redes-spoke-dev-002b`)
+- qld: `elet-<nome>-qld` → Shared VPC `vpc-spoke-qld` (host project ID: `redes-spoke-qld-7e83`)
+- prd: `elet-<nome>-prd` → Shared VPC `vpc-spoke-prd` (host project ID: `redes-spoke-prd-bd15`)
+
+**Nota:** Requer que os projetos já tenham sido criados no passo 1.
 
 ## 📂 Estrutura do Projeto
 
@@ -155,10 +159,12 @@ projeto_config/
     │   ├── projects.go             # Gerenciamento de projetos
     │   ├── apis.go                 # Gerenciamento de APIs
     │   ├── billing.go              # Gerenciamento de Billing
+    │   ├── networks.go             # Gerenciamento de Redes Shared VPC
     │   ├── loader.go               # Carregamento de projetos existentes
     │   ├── step1_folders.go        # Orquestrador do Passo 1
     │   ├── step2_labels.go         # Orquestrador do Passo 2
-    │   └── step3_apis.go           # Orquestrador do Passo 3
+    │   ├── step3_apis.go           # Orquestrador do Passo 3
+    │   └── step4_networks.go       # Orquestrador do Passo 4
     ├── models/                     # Estruturas de dados
     │   └── types.go                # Tipos do projeto
     └── config/                     # Configurações (expandível)
@@ -208,6 +214,44 @@ gcloud billing projects link elet-axiaauth-dev \
 
 Ou configure via Console GCP: https://console.cloud.google.com/billing
 
+### Erro: "Shared VPC attachment failed"
+
+Isso significa que o projeto host (como `redes-spoke-dev`) não está configurado corretamente ou o projeto de serviço não tem permissões. Para resolver:
+
+**1. Verificar se o host project existe e está habilitado:**
+```bash
+gcloud compute projects describe redes-spoke-dev
+```
+
+**2. Verificar se a Shared VPC está habilitada no host project:**
+```bash
+gcloud compute shared-vpc enable redes-spoke-dev-002b
+gcloud compute shared-vpc enable redes-spoke-qld-7e83
+gcloud compute shared-vpc enable redes-spoke-prd-bd15
+```
+
+**3. Garantir que o seu usuário tem role `roles/compute.admin` no host project:**
+```bash
+gcloud projects add-iam-policy-binding redes-spoke-dev-002b \
+  --member=user:seu-email@eletrobras.com \
+  --role=roles/compute.admin
+  
+gcloud projects add-iam-policy-binding redes-spoke-qld-7e83 \
+  --member=user:seu-email@eletrobras.com \
+  --role=roles/compute.admin
+  
+gcloud projects add-iam-policy-binding redes-spoke-prd-bd15 \
+  --member=user:seu-email@eletrobras.com \
+  --role=roles/compute.admin
+```
+
+**4. Para vincular manualmente um projeto à Shared VPC:**
+```bash
+gcloud compute shared-vpc associated-projects add \
+  elet-benner-cloud-dev \
+  --host-project=redes-spoke-dev-002b
+```
+
 ## 🛠️ Desenvolvimento
 
 ### Compilar localmente
@@ -232,7 +276,7 @@ Crie novos arquivos em `internal/gcp/stepX_*.go` e implemente a função corresp
 - [x] ✅ Passo 1 - Criar pastas
 - [x] ✅ Passo 2 - Adicionar labels
 - [x] ✅ Passo 3 - Habilitar APIs
-- [ ] Passo 4 - Atachar às redes spokes
+- [x] ✅ Passo 4 - Atachar às redes spokes
 - [ ] Adicionar testes unitários
 - [ ] Adicionar arquivo de configuração YAML/JSON
 - [ ] Sistema de logging mais robusto

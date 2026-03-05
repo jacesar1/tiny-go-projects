@@ -117,8 +117,9 @@ func main() {
 			}
 		}
 
-		// TODO: Implementar passo 4
-		fmt.Println("⚠️  Passo 4 ainda não implementado")
+		if err := gcp.Step4AttachToNetworks(gcpProject); err != nil {
+			log.Fatalf("❌ Erro no Passo 4: %v", err)
+		}
 	}
 
 	if *step == 0 {
