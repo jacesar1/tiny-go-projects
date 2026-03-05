@@ -8,6 +8,8 @@ type ProjectConfig struct {
 	OrgID string
 	// ID da pasta pai onde criar as subpastas (ex: fldr-scge)
 	ParentFolderID string
+	// ID da conta de billing (ex: 01F7C9-60D131-20DC44) - opcional
+	BillingAccountID string
 }
 
 // GCPEnvironment representa um ambiente (dev, qld, prd)

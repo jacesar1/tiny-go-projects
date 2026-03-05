@@ -90,7 +90,17 @@ func Step1CreateFolderStructure(config *models.ProjectConfig) (*models.GCPProjec
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("      ✓ Project ID: %s\n\n", createdProjectID)
+		fmt.Printf("      ✓ Project ID: %s\n", createdProjectID)
+
+		// Vincular conta de billing se fornecida
+		if config.BillingAccountID != "" {
+			fmt.Printf("   💳 Vinculando billing account: %s\n", config.BillingAccountID)
+			if err := LinkBillingAccount(createdProjectID, config.BillingAccountID); err != nil {
+				return nil, err
+			}
+			fmt.Printf("      ✓ Billing account vinculado\n")
+		}
+		fmt.Printf("\n")
 
 		// Armazenar Project ID
 		envMap[env].ProjectID = createdProjectID

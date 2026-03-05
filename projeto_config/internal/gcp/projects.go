@@ -55,9 +55,10 @@ func SetProjectLabels(projectID string, labels map[string]string) error {
 		labelsStr += fmt.Sprintf("%s=%s", key, value)
 	}
 
+	// Usar gcloud alpha projects update (suporta --update-labels)
 	cmd := exec.Command(
 		"gcloud",
-		"projects", "update", projectID,
+		"alpha", "projects", "update", projectID,
 		fmt.Sprintf("--update-labels=%s", labelsStr),
 	)
 
@@ -71,4 +72,29 @@ func SetProjectLabels(projectID string, labels map[string]string) error {
 	}
 
 	return nil
+}
+
+// GetProjectByID busca as informações de um projeto pelo ID
+func GetProjectByID(projectID string) (map[string]interface{}, error) {
+	cmd := exec.Command(
+		"gcloud",
+		"projects", "describe", projectID,
+		"--format=json",
+	)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("erro ao buscar projeto %s: %w\nStderr: %s", projectID, err, stderr.String())
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		return nil, fmt.Errorf("erro ao fazer parse do resultado: %w", err)
+	}
+
+	return result, nil
 }

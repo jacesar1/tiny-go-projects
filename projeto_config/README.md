@@ -8,6 +8,7 @@ Aplicação Go para automatizar a criação de projetos no GCP seguindo a estrut
 - **gcloud CLI** instalado e configurado
 - Autenticação no GCP: `gcloud auth login`
 - Permissões na organização/pastas (Folder Creator, Project Creator)
+- A conta de Billing **01F7C9-60D131-20DC44** deve estar válida e ativa na organização
 
 ## 🚀 Instalação
 
@@ -36,31 +37,33 @@ chmod +x projeto_config
 ### Sintaxe Básica
 
 ```bash
-./projeto_config -project <nome> [-step <1-4>]
+./projeto_config -project <nome> [optional: -step <1-4>]
 ```
 
 ### Exemplos
+
+**Executar TODOS os passos (1-4):**
+```bash
+./projeto_config -project benner-cloud
+```
 
 **Passo 1 - Criar estrutura de pastas:**
 ```bash
 ./projeto_config -project benner-cloud -step 1
 ```
 
-**Com ID da pasta pai específico:**
+**Passo 2 - Adicionar labels (requer passo 1 já executado):**
 ```bash
-./projeto_config -project benner-cloud -parent-folder 196427624856 -step 1
-```
-
-**Com nome de pasta pai (será resolvido automaticamente):**
-```bash
-./projeto_config -project benner-cloud -parent-folder fldr-scge -step 1
-```
-
-**Todos os passos sequencialmente:**
-```bash
-./projeto_config -project benner-cloud -step 1
 ./projeto_config -project benner-cloud -step 2
+```
+
+**Passo 3 - Habilitar APIs (requer passo 1 já executado):**
+```bash
 ./projeto_config -project benner-cloud -step 3
+```
+
+**Passo 4 - Atachar nas redes (requer passo 1 já executado):**
+```bash
 ./projeto_config -project benner-cloud -step 4
 ```
 
@@ -69,10 +72,17 @@ chmod +x projeto_config
 | Flag | Padrão | Descrição |
 |------|--------|-----------|
 | `-project` | Obrigatório | Nome do projeto (ex: benner-cloud) |
-| `-parent-folder` | `fldr-scge` | ID ou nome da pasta pai |
+| `-parent-folder` | `fldr-scge` | ID ou nome da pasta pai (usado apenas no passo 1) |
 | `-org-id` | `727440331682` | ID da organização Eletrobras |
-| `-step` | `1` | Qual passo executar (1-4) |
+| `-step` | Vazio (executa todos) | Qual passo executar (1-4). Se omitido, executa todos os passos |
 | `-help` | - | Mostra ajuda |
+
+**Importante:** 
+- **Se nenhuma flag `-step` for especificada**, executa **todos os 4 passos sequencialmente**
+- Se `-step` for especificado (1-4), executa **apenas aquele passo específico**
+- Os passos 2, 3 e 4 carregam automaticamente os dados dos projetos já criados no passo 1
+- **Billing Account é vinculada automaticamente** (01F7C9-60D131-20DC44) ao criar projetos no passo 1
+- Execute o passo 1 primeiro para criar a estrutura base
 
 ## 📚 Passos de Automação
 
@@ -94,20 +104,28 @@ fldr-<nome do projeto>/
 - ✓ Resolve automaticamente nome da pasta para ID
 - ✓ Cria estrutura em 3 ambientes (dev, qld, prd)
 - ✓ Fornece IDs de pasta e projeto na saída
+- ✓ **Vincula Billing Account automaticamente (01F7C9-60D131-20DC44)**
 - ✓ Tratamento robusto de erros com mensagens detalhadas
 
-### 📋 Passo 2: Adicionar Labels (Em desenvolvimento)
+### 📋 Passo 2: Adicionar Labels ✅
 
-Adiciona os seguintes labels a cada projeto:
-- `ambiente`: dev | qld | prd
+Adiciona automaticamente os seguintes labels a cada projeto:
+- `ambiente`: dev | qld | prd (variante para cada ambiente)
 - `companhia`: elet
 - `projeto`: <nome do projeto>
 
-### 🔌 Passo 3: Habilitar APIs (Em desenvolvimento)
+### 🔌 Passo 3: Habilitar APIs ✅
 
-Habilita automaticamente as seguintes APIs em cada projeto:
+Habilita automaticamente as seguintes APIs obrigatórias em cada projeto:
 - Compute Engine (`compute.googleapis.com`)
 - Service Networking (`servicenetworking.googleapis.com`)
+
+Além disso, oferece opção de habilitar APIs adicionais:
+- Artifact Registry (`artifactregistry.googleapis.com`)
+- Secret Manager (`secretmanager.googleapis.com`)
+- Firestore (`firestore.googleapis.com`)
+
+**Nota:** Requer que o projeto já tenha sido criado no passo 1 (com Billing Account vinculado automaticamente).
 
 ### 🔗 Passo 4: Atachar nas Redes Spokes (Em desenvolvimento)
 
@@ -136,7 +154,11 @@ projeto_config/
     │   ├── folders.go              # Gerenciamento de pastas
     │   ├── projects.go             # Gerenciamento de projetos
     │   ├── apis.go                 # Gerenciamento de APIs
-    │   └── step1_folders.go        # Orquestrador do Passo 1
+    │   ├── billing.go              # Gerenciamento de Billing
+    │   ├── loader.go               # Carregamento de projetos existentes
+    │   ├── step1_folders.go        # Orquestrador do Passo 1
+    │   ├── step2_labels.go         # Orquestrador do Passo 2
+    │   └── step3_apis.go           # Orquestrador do Passo 3
     ├── models/                     # Estruturas de dados
     │   └── types.go                # Tipos do projeto
     └── config/                     # Configurações (expandível)
@@ -163,8 +185,28 @@ gcloud organizations add-iam-policy-binding 727440331682 \
   --role=roles/resourcemanager.projectCreator
 ```
 
-### Erro: "gcloud not found"
-Instale o Google Cloud SDK: https://cloud.google.com/sdk/docs/install
+### Erro: "Billing account for project is not found"
+
+Isso significa que a conta de billing **01F7C9-60D131-20DC44** não está vinculada corretamente. Para resolver:
+
+**1. Verificar se a conta de billing está ativa:**
+```bash
+gcloud billing accounts list
+```
+
+**2. Se necessário, vincular manualmente a conta de billing ao projeto:**
+```bash
+gcloud billing projects link <PROJECT_ID> \
+  --billing-account=01F7C9-60D131-20DC44
+```
+
+**Exemplo:**
+```bash
+gcloud billing projects link elet-axiaauth-dev \
+  --billing-account=01F7C9-60D131-20DC44
+```
+
+Ou configure via Console GCP: https://console.cloud.google.com/billing
 
 ## 🛠️ Desenvolvimento
 
@@ -187,9 +229,9 @@ Crie novos arquivos em `internal/gcp/stepX_*.go` e implemente a função corresp
 
 ## 📝 Próximos Passos
 
-- [ ] ✅ Passo 1 - Criar pastas
-- [ ] Passo 2 - Adicionar labels
-- [ ] Passo 3 - Habilitar APIs
+- [x] ✅ Passo 1 - Criar pastas
+- [x] ✅ Passo 2 - Adicionar labels
+- [x] ✅ Passo 3 - Habilitar APIs
 - [ ] Passo 4 - Atachar às redes spokes
 - [ ] Adicionar testes unitários
 - [ ] Adicionar arquivo de configuração YAML/JSON
