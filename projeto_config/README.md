@@ -146,16 +146,18 @@ Associa automaticamente cada projeto à sua VPC spoke correspondente (Shared VPC
 
 ### 👤 Passo 5: Criar Service Accounts ✅
 
-Cria duas service accounts por ambiente e aplica as roles:
+Cria duas service accounts por ambiente, aplica as roles e gera chaves JSON:
 
 **SA da Pipeline (GitLab):**
 - Nome: `sa-<nome do projeto>-git` (uma única SA compartilhada entre ambientes)
 - Role: `roles/artifactregistry.createOnPushWriter`
+- Chave JSON: `sa-<nome do projeto>-git-<env>.json` (salva no diretório atual)
 
 **SA GSA:**
 - Nome: `sa-<nome do projeto>-dev|qld|prd`
 - Role: `projects/<project_id>/roles/customRole_SA_<nome_do_projeto>` (hífens substituídos por underscores)
 - Role adicional: `roles/secretmanager.viewer`
+- Chave JSON: `sa-<nome do projeto>-<env>.json` (salva no diretório atual)
 
 **Permissões da custom role:**
 - `artifactregistry.repositories.downloadArtifacts`
@@ -169,6 +171,18 @@ Cria duas service accounts por ambiente e aplica as roles:
 - `monitoring.timeSeries.create`
 - `pubsub.subscriptions.consume`
 - `pubsub.topics.publish`
+
+**Criação de chaves JSON:**
+Para permitir a criação das chaves, o passo 5 executa em 4 fases:
+1. **Fase 1:** Cria service accounts e aplica roles em todos os projetos
+2. **Fase 2:** Desabilita as org policies em todos os projetos:
+  - `constraints/iam.disableServiceAccountKeyCreation`
+  - `constraints/iam.disableServiceAccountKeyUpload`
+  - Em seguida, valida a policy efetiva (`enforced=false`) antes de continuar
+3. **Fase 3:** Cria as chaves JSON com retry robusto (até 8 tentativas por chave, com 15s entre tentativas)
+4. **Fase 4:** Reseta as policies em todos os projetos (volta a herdar do parent) e valida a remoção do override
+
+Essa abordagem em lote aumenta a confiabilidade e evita seguir para criação de chave antes da propagação real da policy.
 
 **Nota:** Este passo só é executado com `-step 5`.
 
