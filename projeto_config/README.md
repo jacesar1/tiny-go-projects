@@ -37,7 +37,7 @@ chmod +x projeto_config
 ### Sintaxe Básica
 
 ```bash
-./projeto_config -project <nome> [optional: -step <1-4>]
+./projeto_config -project <nome> [optional: -step <1-5>]
 ```
 
 ### Exemplos
@@ -67,6 +67,11 @@ chmod +x projeto_config
 ./projeto_config -project benner-cloud -step 4
 ```
 
+**Passo 5 - Criar Service Accounts (requer passo 1 já executado):**
+```bash
+./projeto_config -project benner-cloud -step 5
+```
+
 ### Flags Disponíveis
 
 | Flag | Padrão | Descrição |
@@ -74,12 +79,13 @@ chmod +x projeto_config
 | `-project` | Obrigatório | Nome do projeto (ex: benner-cloud) |
 | `-parent-folder` | `fldr-scge` | ID ou nome da pasta pai (usado apenas no passo 1) |
 | `-org-id` | `727440331682` | ID da organização Eletrobras |
-| `-step` | Vazio (executa todos) | Qual passo executar (1-4). Se omitido, executa todos os passos |
+| `-step` | Vazio (executa 1-4) | Qual passo executar (1-5). Se omitido, executa passos 1-4 |
 | `-help` | - | Mostra ajuda |
 
 **Importante:** 
 - **Se nenhuma flag `-step` for especificada**, executa **todos os 4 passos sequencialmente**
 - Se `-step` for especificado (1-4), executa **apenas aquele passo específico**
+- Se `-step 5` for especificado, executa **apenas o passo 5**
 - Os passos 2, 3 e 4 carregam automaticamente os dados dos projetos já criados no passo 1
 - **Billing Account é vinculada automaticamente** (01F7C9-60D131-20DC44) ao criar projetos no passo 1
 - Execute o passo 1 primeiro para criar a estrutura base
@@ -137,6 +143,34 @@ Associa automaticamente cada projeto à sua VPC spoke correspondente (Shared VPC
 - prd: `elet-<nome>-prd` → Shared VPC `vpc-spoke-prd` (host project ID: `redes-spoke-prd-bd15`)
 
 **Nota:** Requer que os projetos já tenham sido criados no passo 1.
+
+### 👤 Passo 5: Criar Service Accounts ✅
+
+Cria duas service accounts por ambiente e aplica as roles:
+
+**SA da Pipeline (GitLab):**
+- Nome: `sa-<nome do projeto>-git` (uma única SA compartilhada entre ambientes)
+- Role: `roles/artifactregistry.createOnPushWriter`
+
+**SA GSA:**
+- Nome: `sa-<nome do projeto>-dev|qld|prd`
+- Role: `projects/<project_id>/roles/customRole_SA_<nome_do_projeto>` (hífens substituídos por underscores)
+- Role adicional: `roles/secretmanager.viewer`
+
+**Permissões da custom role:**
+- `artifactregistry.repositories.downloadArtifacts`
+- `autoscaling.sites.writeMetrics`
+- `datastore.entities.get`
+- `datastore.entities.list`
+- `datastore.entities.update`
+- `datastore.entities.create`
+- `logging.logEntries.create`
+- `monitoring.dashboards.get`
+- `monitoring.timeSeries.create`
+- `pubsub.subscriptions.consume`
+- `pubsub.topics.publish`
+
+**Nota:** Este passo só é executado com `-step 5`.
 
 ## 📂 Estrutura do Projeto
 
@@ -277,6 +311,7 @@ Crie novos arquivos em `internal/gcp/stepX_*.go` e implemente a função corresp
 - [x] ✅ Passo 2 - Adicionar labels
 - [x] ✅ Passo 3 - Habilitar APIs
 - [x] ✅ Passo 4 - Atachar às redes spokes
+- [x] ✅ Passo 5 - Criar service accounts e roles
 - [ ] Adicionar testes unitários
 - [ ] Adicionar arquivo de configuração YAML/JSON
 - [ ] Sistema de logging mais robusto

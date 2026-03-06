@@ -18,19 +18,20 @@ func main() {
 	projectName := flag.String("project", "", "Nome do projeto (obrigatório)")
 	orgID := flag.String("org-id", "727440331682", "ID da organização")
 	parentFolder := flag.String("parent-folder", "fldr-scge", "ID da pasta pai")
-	step := flag.Int("step", 0, "Qual passo executar (1-4). Se omitido (0), executa todos")
+	step := flag.Int("step", 0, "Qual passo executar (1-5). Se omitido (0), executa passos 1-4")
 
 	flag.Parse()
 
 	// Validar argumentos obrigatórios
 	if *projectName == "" {
-		fmt.Println("Uso: projeto_config -project <nome> [-org-id <id>] [-parent-folder <id>] [-step <1-4>]")
+		fmt.Println("Uso: projeto_config -project <nome> [-org-id <id>] [-parent-folder <id>] [-step <1-5>]")
 		fmt.Println("\nExemplos:")
 		fmt.Println("  projeto_config -project benner-cloud          # Executa todos os passos (1-4)")
 		fmt.Println("  projeto_config -project benner-cloud -step 1  # Criar estrutura apenas")
 		fmt.Println("  projeto_config -project benner-cloud -step 2  # Adicionar labels apenas")
 		fmt.Println("  projeto_config -project benner-cloud -step 3  # Habilitar APIs apenas")
 		fmt.Println("  projeto_config -project benner-cloud -step 4  # Atachar nas redes apenas")
+		fmt.Println("  projeto_config -project benner-cloud -step 5  # Criar service accounts apenas")
 		fmt.Println("\nNota: Billing Account é vinculado automaticamente (01F7C9-60D131-20DC44)")
 		flag.PrintDefaults()
 		return
@@ -52,8 +53,8 @@ func main() {
 	}
 
 	// Validar passo
-	if *step < 0 || *step > 4 {
-		log.Fatal("Passo deve estar entre 0 (todos) e 4")
+	if *step < 0 || *step > 5 {
+		log.Fatal("Passo deve estar entre 0 (todos) e 5")
 	}
 
 	// Criar configuração
@@ -119,6 +120,21 @@ func main() {
 
 		if err := gcp.Step4AttachToNetworks(gcpProject); err != nil {
 			log.Fatalf("❌ Erro no Passo 4: %v", err)
+		}
+	}
+
+	// Passo 5: Criar service accounts
+	if *step == 5 {
+		// Carregar dados dos projetos existentes (se nao foi executado passo 1)
+		if gcpProject == nil {
+			gcpProject, err = gcp.LoadExistingProject(*projectName)
+			if err != nil {
+				log.Fatalf("❌ Erro ao carregar projeto: %v", err)
+			}
+		}
+
+		if err := gcp.Step5CreateServiceAccounts(gcpProject); err != nil {
+			log.Fatalf("❌ Erro no Passo 5: %v", err)
 		}
 	}
 
