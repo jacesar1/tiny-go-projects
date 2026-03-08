@@ -8,6 +8,9 @@ import (
 // Step4AttachToNetworks implementa o passo 4: atachar projetos às redes spoke
 // Associa cada projeto à sua VPC spoke correspondente
 func Step4AttachToNetworks(project *models.GCPProject) error {
+	BeginStepCommandTrace("passo 4")
+	defer EndStepCommandTrace()
+
 	fmt.Printf("═══════════════════════════════════════════════════════════\n")
 	fmt.Printf("PASSO 4: Atachando projetos às Redes Spokes VPC\n")
 	fmt.Printf("═══════════════════════════════════════════════════════════\n\n")

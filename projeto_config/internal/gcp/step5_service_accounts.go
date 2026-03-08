@@ -16,6 +16,9 @@ type envConfig struct {
 
 // Step5CreateServiceAccounts implementa o passo 5: criar service accounts e roles
 func Step5CreateServiceAccounts(project *models.GCPProject) (retErr error) {
+	BeginStepCommandTrace("passo 5")
+	defer EndStepCommandTrace()
+
 	fmt.Printf("═══════════════════════════════════════════════════════════\n")
 	fmt.Printf("PASSO 5: Criando Service Accounts e Roles\n")
 	fmt.Printf("═══════════════════════════════════════════════════════════\n\n")
@@ -81,11 +84,11 @@ func Step5CreateServiceAccounts(project *models.GCPProject) (retErr error) {
 		if err := CreateServiceAccount(env.ProjectID, gitlabAccountID, "GitLab Pipeline Service Account"); err != nil {
 			return err
 		}
-		if err := WaitForServiceAccount(env.ProjectID, gitlabAccountID, 5, 2*time.Second); err != nil {
+		if err := WaitForServiceAccount(env.ProjectID, gitlabAccountID, 10, 3*time.Second); err != nil {
 			return err
 		}
 
-		if err := AddProjectIamBinding(env.ProjectID, fmt.Sprintf("serviceAccount:%s", gitlabEmail), "roles/artifactregistry.createOnPushWriter"); err != nil {
+		if err := AddProjectIamBindingWithRetry(env.ProjectID, fmt.Sprintf("serviceAccount:%s", gitlabEmail), "roles/artifactregistry.createOnPushWriter", 6, 5*time.Second); err != nil {
 			return err
 		}
 
@@ -97,17 +100,17 @@ func Step5CreateServiceAccounts(project *models.GCPProject) (retErr error) {
 		if err := CreateServiceAccount(env.ProjectID, gsaAccountID, "GSA Service Account"); err != nil {
 			return err
 		}
-		if err := WaitForServiceAccount(env.ProjectID, gsaAccountID, 5, 2*time.Second); err != nil {
+		if err := WaitForServiceAccount(env.ProjectID, gsaAccountID, 10, 3*time.Second); err != nil {
 			return err
 		}
 
 		customRoleName := fmt.Sprintf("projects/%s/roles/%s", env.ProjectID, customRoleID)
-		if err := AddProjectIamBinding(env.ProjectID, fmt.Sprintf("serviceAccount:%s", gsaEmail), customRoleName); err != nil {
+		if err := AddProjectIamBindingWithRetry(env.ProjectID, fmt.Sprintf("serviceAccount:%s", gsaEmail), customRoleName, 6, 5*time.Second); err != nil {
 			return err
 		}
 
 		// Secret Manager Viewer conforme requisicao
-		if err := AddProjectIamBinding(env.ProjectID, fmt.Sprintf("serviceAccount:%s", gsaEmail), "roles/secretmanager.viewer"); err != nil {
+		if err := AddProjectIamBindingWithRetry(env.ProjectID, fmt.Sprintf("serviceAccount:%s", gsaEmail), "roles/secretmanager.viewer", 6, 5*time.Second); err != nil {
 			return err
 		}
 
@@ -239,7 +242,7 @@ func resetPoliciesForAllProjects(envConfigs []envConfig, constraints []string) e
 	}
 
 	if len(resetErrors) > 0 {
-		return fmt.Errorf(strings.Join(resetErrors, " | "))
+		return fmt.Errorf("%s", strings.Join(resetErrors, " | "))
 	}
 
 	return nil

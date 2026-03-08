@@ -17,6 +17,9 @@ import (
 //	└─ fldr-prd
 //	     └─ elet-<nome do projeto>-prd (projeto)
 func Step1CreateFolderStructure(config *models.ProjectConfig) (*models.GCPProject, error) {
+	BeginStepCommandTrace("passo 1")
+	defer EndStepCommandTrace()
+
 	fmt.Printf("═══════════════════════════════════════════════════════════\n")
 	fmt.Printf("PASSO 1: Criando estrutura de pastas\n")
 	fmt.Printf("═══════════════════════════════════════════════════════════\n\n")

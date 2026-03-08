@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 )
 
@@ -14,8 +13,7 @@ func CreateFolder(parentFolderID, displayName string) (string, error) {
 	// Comando: gcloud resource-manager folders create --display-name=<name> --folder=<folder-id>
 	// Referência: gcloud help resource-manager folders create
 
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"resource-manager", "folders", "create",
 		fmt.Sprintf("--display-name=%s", displayName),
 		fmt.Sprintf("--folder=%s", parentFolderID),
@@ -55,8 +53,7 @@ func CreateFolder(parentFolderID, displayName string) (string, error) {
 
 // ListFolders lista as pastas dentro de uma pasta pai
 func ListFolders(parentFolderID string) ([]map[string]interface{}, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"resource-manager", "folders", "list",
 		fmt.Sprintf("--folder=%s", parentFolderID),
 		"--format=json",
@@ -103,8 +100,7 @@ func FindFolderIDByName(parentFolderID, folderName string) (string, error) {
 
 // FindFolderIDByNameInOrg procura uma pasta pelo nome em uma organização
 func FindFolderIDByNameInOrg(orgID, folderName string) (string, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"resource-manager", "folders", "list",
 		fmt.Sprintf("--organization=%s", orgID),
 		"--format=json",

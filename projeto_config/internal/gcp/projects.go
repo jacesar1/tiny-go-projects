@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 )
 
 // CreateProject cria um novo projeto GCP dentro de uma pasta
 func CreateProject(projectID, displayName, parentFolderID string) (string, error) {
 	// Comando: gcloud projects create <project-id> --name=<display-name> --folder=<folder-id>
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"projects", "create", projectID,
 		fmt.Sprintf("--name=%s", displayName),
 		fmt.Sprintf("--folder=%s", parentFolderID),
@@ -56,8 +54,7 @@ func SetProjectLabels(projectID string, labels map[string]string) error {
 	}
 
 	// Usar gcloud alpha projects update (suporta --update-labels)
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"alpha", "projects", "update", projectID,
 		fmt.Sprintf("--update-labels=%s", labelsStr),
 	)
@@ -76,8 +73,7 @@ func SetProjectLabels(projectID string, labels map[string]string) error {
 
 // GetProjectByID busca as informações de um projeto pelo ID
 func GetProjectByID(projectID string) (map[string]interface{}, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"projects", "describe", projectID,
 		"--format=json",
 	)
@@ -88,12 +84,26 @@ func GetProjectByID(projectID string) (map[string]interface{}, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return nil, fmt.Errorf("erro ao buscar projeto %s: %w\nStderr: %s", projectID, err, stderr.String())
+		stderrStr := stderr.String()
+
+		// Detectar crash do gcloud
+		if bytes.Contains(stderr.Bytes(), []byte("gcloud crashed")) ||
+			bytes.Contains(stderr.Bytes(), []byte("TypeError")) {
+			return nil, fmt.Errorf("gcloud CLI crashou ao buscar projeto (problema na instalação do gcloud, não no projeto_config). Execute: gcloud info --run-diagnostics")
+		}
+
+		// Detectar projeto não encontrado (comportamento esperado)
+		if bytes.Contains(stderr.Bytes(), []byte("NOT_FOUND")) ||
+			bytes.Contains(stderr.Bytes(), []byte("does not exist")) {
+			return nil, fmt.Errorf("projeto não encontrado")
+		}
+
+		return nil, fmt.Errorf("erro ao buscar projeto %s: %w\nStderr: %s", projectID, err, stderrStr)
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		return nil, fmt.Errorf("erro ao fazer parse do resultado: %w", err)
+		return nil, fmt.Errorf("erro ao fazer parse do resultado: %w\nOutput: %s", err, stdout.String())
 	}
 
 	return result, nil

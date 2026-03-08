@@ -6,7 +6,7 @@ Para criar um novo projeto temos 4 passos que devemos cumprir, inicialmente pode
 
 1) criar as pastas no manage resources
 
-a organização é eletrobras.com ID 727440331682 e a pasta que vamos trabalhar é fldr-scge, abaixo dela criamos novas pastas usando o novo projeto como nome das subpastas e dos projetos como a seguir:
+a organização é axiaenergia.com ID 727440331682 e a pasta que vamos trabalhar é fldr-scge, abaixo dela criamos novas pastas usando o novo projeto como nome das subpastas e dos projetos como a seguir:
  
 fldr-<nome do projejo>
      fldr-dev

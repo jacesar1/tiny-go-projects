@@ -3,16 +3,12 @@ package gcp
 import (
 	"bytes"
 	"fmt"
-	"os/exec"
 	"strings"
 )
 
 // GetCurrentProject retorna o projeto padrão configurado no gcloud
 func GetCurrentProject() (string, error) {
-	cmd := exec.Command(
-		"gcloud",
-		"config", "get-value", "project",
-	)
+	cmd := newGCloudCommand("config", "get-value", "project")
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -28,10 +24,7 @@ func GetCurrentProject() (string, error) {
 
 // GetCurrentAccount retorna a conta autenticada no gcloud
 func GetCurrentAccount() (string, error) {
-	cmd := exec.Command(
-		"gcloud",
-		"config", "get-value", "account",
-	)
+	cmd := newGCloudCommand("config", "get-value", "account")
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

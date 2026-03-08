@@ -3,14 +3,12 @@ package gcp
 import (
 	"bytes"
 	"fmt"
-	"os/exec"
 )
 
 // AttachToSharedVPC vincula um projeto de serviço a um projeto host com Shared VPC
 // Comando: gcloud compute shared-vpc associated-projects add <SERVICE_PROJECT> --host-project=<HOST_PROJECT>
 func AttachToSharedVPC(serviceProject, hostProject string) error {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"compute", "shared-vpc", "associated-projects", "add",
 		serviceProject,
 		fmt.Sprintf("--host-project=%s", hostProject),
@@ -30,8 +28,7 @@ func AttachToSharedVPC(serviceProject, hostProject string) error {
 
 // GetSharedVPCStatus verifica se um projeto está atachado a uma Shared VPC
 func GetSharedVPCStatus(serviceProject string) (string, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"compute", "shared-vpc", "associated-projects", "list",
 		fmt.Sprintf("--filter=name=%s", serviceProject),
 		"--format=value(name)",

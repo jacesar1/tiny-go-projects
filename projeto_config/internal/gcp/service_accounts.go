@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -24,8 +23,7 @@ func CreateServiceAccount(projectID, accountID, displayName string) error {
 		return nil
 	}
 
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"iam", "service-accounts", "create", accountID,
 		fmt.Sprintf("--project=%s", projectID),
 		fmt.Sprintf("--display-name=%s", displayName),
@@ -60,8 +58,7 @@ func WaitForServiceAccount(projectID, accountID string, maxAttempts int, delay t
 
 // AddProjectIamBinding adiciona um binding IAM em um projeto.
 func AddProjectIamBinding(projectID, member, role string) error {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"projects", "add-iam-policy-binding", projectID,
 		fmt.Sprintf("--member=%s", member),
 		fmt.Sprintf("--role=%s", role),
@@ -78,11 +75,42 @@ func AddProjectIamBinding(projectID, member, role string) error {
 	return nil
 }
 
+// AddProjectIamBindingWithRetry repete o binding quando a SA ainda nao propagou no IAM.
+func AddProjectIamBindingWithRetry(projectID, member, role string, maxAttempts int, delay time.Duration) error {
+	var lastErr error
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		err := AddProjectIamBinding(projectID, member, role)
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		if !isServiceAccountNotFoundInBindingError(err) {
+			return err
+		}
+
+		if attempt < maxAttempts {
+			time.Sleep(delay)
+		}
+	}
+
+	return fmt.Errorf("falha ao adicionar binding apos %d tentativas: %w", maxAttempts, lastErr)
+}
+
+func isServiceAccountNotFoundInBindingError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	return strings.Contains(errMsg, "service account") && strings.Contains(errMsg, "does not exist")
+}
+
 // CreateServiceAccountKey cria uma chave JSON para a service account.
 func CreateServiceAccountKey(projectID, accountID, outputPath string) error {
 	email := ServiceAccountEmail(accountID, projectID)
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"iam", "service-accounts", "keys", "create", outputPath,
 		fmt.Sprintf("--iam-account=%s", email),
 		fmt.Sprintf("--project=%s", projectID),
@@ -102,8 +130,7 @@ func CreateServiceAccountKey(projectID, accountID, outputPath string) error {
 // ServiceAccountHasUserManagedKeys verifica se a service account possui chaves criadas pelo usuario.
 func ServiceAccountHasUserManagedKeys(projectID, accountID string) (bool, error) {
 	email := ServiceAccountEmail(accountID, projectID)
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"iam", "service-accounts", "keys", "list",
 		fmt.Sprintf("--iam-account=%s", email),
 		fmt.Sprintf("--project=%s", projectID),
@@ -135,8 +162,7 @@ func ServiceAccountHasUserManagedKeys(projectID, accountID string) (bool, error)
 
 // EnsureSecretExists cria a secret se ela ainda nao existir no projeto.
 func EnsureSecretExists(projectID, secretID string) error {
-	describeCmd := exec.Command(
-		"gcloud",
+	describeCmd := newGCloudCommand(
 		"secrets", "describe", secretID,
 		fmt.Sprintf("--project=%s", projectID),
 		"--format=json",
@@ -155,8 +181,7 @@ func EnsureSecretExists(projectID, secretID string) error {
 		}
 	}
 
-	createCmd := exec.Command(
-		"gcloud",
+	createCmd := newGCloudCommand(
 		"secrets", "create", secretID,
 		fmt.Sprintf("--project=%s", projectID),
 		"--replication-policy=automatic",
@@ -179,8 +204,7 @@ func EnsureSecretExists(projectID, secretID string) error {
 
 // AddSecretVersionFromFile adiciona uma nova versao a partir de um arquivo local e retorna o numero.
 func AddSecretVersionFromFile(projectID, secretID, filePath string) (string, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"secrets", "versions", "add", secretID,
 		fmt.Sprintf("--project=%s", projectID),
 		fmt.Sprintf("--data-file=%s", filePath),
@@ -234,8 +258,7 @@ func StoreSecretFromFile(projectID, secretID, filePath string) (string, error) {
 
 // CreateCustomRole cria uma custom role no projeto, se ainda nao existir.
 func CreateCustomRole(projectID, roleID, title, description string, permissions []string) error {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"iam", "roles", "create", roleID,
 		fmt.Sprintf("--project=%s", projectID),
 		fmt.Sprintf("--title=%s", title),
@@ -263,8 +286,7 @@ func CreateCustomRole(projectID, roleID, title, description string, permissions 
 
 // DisableProjectOrgPolicyEnforce desabilita o enforce de uma policy no projeto.
 func DisableProjectOrgPolicyEnforce(projectID, constraint string) error {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"resource-manager", "org-policies", "disable-enforce", constraint,
 		fmt.Sprintf("--project=%s", projectID),
 	)
@@ -282,8 +304,7 @@ func DisableProjectOrgPolicyEnforce(projectID, constraint string) error {
 
 // ResetProjectOrgPolicy remove o override da policy no projeto (volta a herdar do parent).
 func ResetProjectOrgPolicy(projectID, constraint string) error {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"resource-manager", "org-policies", "delete", constraint,
 		fmt.Sprintf("--project=%s", projectID),
 		"--quiet",
@@ -307,8 +328,7 @@ func ResetProjectOrgPolicy(projectID, constraint string) error {
 
 // IsProjectOrgPolicyEnforced consulta o estado efetivo de enforce para uma constraint no projeto.
 func IsProjectOrgPolicyEnforced(projectID, constraint string) (bool, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"resource-manager", "org-policies", "describe", constraint,
 		fmt.Sprintf("--project=%s", projectID),
 		"--effective",
@@ -359,8 +379,7 @@ func WaitForPolicyEnforcementState(projectID, constraint string, wantEnforced bo
 
 // HasProjectOrgPolicyOverride verifica se ainda existe override local da policy no projeto.
 func HasProjectOrgPolicyOverride(projectID, constraint string) (bool, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"resource-manager", "org-policies", "describe", constraint,
 		fmt.Sprintf("--project=%s", projectID),
 		"--format=json",
@@ -420,8 +439,7 @@ func WaitForPolicyReset(projectID, constraint string, maxAttempts int, delay tim
 
 func serviceAccountExists(projectID, accountID string) (bool, error) {
 	email := ServiceAccountEmail(accountID, projectID)
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"iam", "service-accounts", "describe", email,
 		fmt.Sprintf("--project=%s", projectID),
 	)

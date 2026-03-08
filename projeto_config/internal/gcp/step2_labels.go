@@ -11,6 +11,9 @@ import (
 //   - companhia: elet
 //   - projeto: <nome do projeto>
 func Step2AddLabels(project *models.GCPProject) error {
+	BeginStepCommandTrace("passo 2")
+	defer EndStepCommandTrace()
+
 	fmt.Printf("═══════════════════════════════════════════════════════════\n")
 	fmt.Printf("PASSO 2: Adicionando labels aos projetos\n")
 	fmt.Printf("═══════════════════════════════════════════════════════════\n\n")

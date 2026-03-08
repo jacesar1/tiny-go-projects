@@ -5,12 +5,43 @@ import (
 	"fmt"
 	"os"
 	"projeto_config/internal/models"
+	"sort"
 	"strings"
 )
+
+var optionalAPICatalog = map[string]string{
+	"artifactregistry.googleapis.com": "Artifact Registry",
+	"secretmanager.googleapis.com":    "Secret Manager",
+	"firestore.googleapis.com":        "Firestore",
+}
+
+// Step3Options define como o passo 3 seleciona APIs opcionais.
+type Step3Options struct {
+	Interactive  bool
+	OptionalAPIs []string
+}
+
+// AvailableOptionalAPIs retorna os IDs das APIs opcionais suportadas.
+func AvailableOptionalAPIs() []string {
+	keys := make([]string, 0, len(optionalAPICatalog))
+	for apiID := range optionalAPICatalog {
+		keys = append(keys, apiID)
+	}
+	sort.Strings(keys)
+	return keys
+}
 
 // Step3EnableAPIs implementa o passo 3: habilitar APIs nos projetos
 // Habilita APIs obrigatórias e pergunta sobre APIs opcionais
 func Step3EnableAPIs(project *models.GCPProject) error {
+	return Step3EnableAPIsWithOptions(project, Step3Options{Interactive: true})
+}
+
+// Step3EnableAPIsWithOptions implementa o passo 3 com selecao de APIs opcionais por flags.
+func Step3EnableAPIsWithOptions(project *models.GCPProject, options Step3Options) error {
+	BeginStepCommandTrace("passo 3")
+	defer EndStepCommandTrace()
+
 	fmt.Printf("═══════════════════════════════════════════════════════════\n")
 	fmt.Printf("PASSO 3: Habilitando APIs nos projetos\n")
 	fmt.Printf("═══════════════════════════════════════════════════════════\n\n")
@@ -30,14 +61,10 @@ func Step3EnableAPIs(project *models.GCPProject) error {
 	}
 
 	// APIs opcionais
-	optionalAPIs := map[string]string{
-		"artifactregistry.googleapis.com": "Artifact Registry",
-		"secretmanager.googleapis.com":    "Secret Manager",
-		"firestore.googleapis.com":        "Firestore",
+	selectedOptionalAPIs, err := resolveOptionalAPIs(options)
+	if err != nil {
+		return err
 	}
-
-	// Perguntar sobre APIs opcionais
-	selectedOptionalAPIs := askForOptionalAPIs(optionalAPIs)
 
 	// Combinar todas as APIs a serem habilitadas
 	allAPIs := append(requiredAPIs, selectedOptionalAPIs...)
@@ -71,6 +98,40 @@ func Step3EnableAPIs(project *models.GCPProject) error {
 	return nil
 }
 
+func resolveOptionalAPIs(options Step3Options) ([]string, error) {
+	if options.Interactive {
+		return askForOptionalAPIs(optionalAPICatalog), nil
+	}
+
+	if len(options.OptionalAPIs) == 0 {
+		return nil, nil
+	}
+
+	allowed := map[string]struct{}{}
+	for _, apiID := range AvailableOptionalAPIs() {
+		allowed[apiID] = struct{}{}
+	}
+
+	unique := map[string]struct{}{}
+	selected := make([]string, 0, len(options.OptionalAPIs))
+	for _, apiID := range options.OptionalAPIs {
+		apiID = strings.TrimSpace(apiID)
+		if apiID == "" {
+			continue
+		}
+		if _, ok := allowed[apiID]; !ok {
+			return nil, fmt.Errorf("api opcional nao suportada: %s", apiID)
+		}
+		if _, seen := unique[apiID]; seen {
+			continue
+		}
+		unique[apiID] = struct{}{}
+		selected = append(selected, apiID)
+	}
+
+	return selected, nil
+}
+
 // askForOptionalAPIs pergunta ao usuário quais APIs opcionais habilitar
 func askForOptionalAPIs(optionalAPIs map[string]string) []string {
 	fmt.Printf("📋 APIs Opcionais (Digite 's' para sim, 'n' para não):\n\n")
@@ -78,7 +139,14 @@ func askForOptionalAPIs(optionalAPIs map[string]string) []string {
 	var selectedAPIs []string
 	reader := bufio.NewReader(os.Stdin)
 
-	for apiID, apiName := range optionalAPIs {
+	keys := make([]string, 0, len(optionalAPIs))
+	for apiID := range optionalAPIs {
+		keys = append(keys, apiID)
+	}
+	sort.Strings(keys)
+
+	for _, apiID := range keys {
+		apiName := optionalAPIs[apiID]
 		fmt.Printf("   ❓ Habilitar %s? (s/n): ", apiName)
 
 		response, err := reader.ReadString('\n')

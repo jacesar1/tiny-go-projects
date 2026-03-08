@@ -3,14 +3,12 @@ package gcp
 import (
 	"bytes"
 	"fmt"
-	"os/exec"
 )
 
 // EnableAPI habilita uma API em um projeto GCP
 func EnableAPI(projectID, apiName string) error {
 	// Comando: gcloud services enable <api-name> --project=<project-id>
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"services", "enable", apiName,
 		fmt.Sprintf("--project=%s", projectID),
 	)

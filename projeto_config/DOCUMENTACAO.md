@@ -1,6 +1,6 @@
 # 📋 Documentação Completa - Automação de Criação de Projetos GCP
 
-**Automação de Criação de Projetos GCP - Eletrobras**
+**Automação de Criação de Projetos GCP - Axia Energia**
 
 ## 📑 Índice
 
@@ -14,7 +14,7 @@
 
 ## 🎯 Visão Geral
 
-O programa `projeto_config` automatiza todo o ciclo de criação de projetos GCP para a Eletrobras, incluindo:
+O programa `projeto_config` automatiza todo o ciclo de criação de projetos GCP para a Axia Energia, incluindo:
 
 - ✅ Criação de estrutura de pastas (Resource Manager)
 - ✅ Adição de labels de identificação

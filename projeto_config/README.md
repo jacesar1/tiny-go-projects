@@ -1,6 +1,6 @@
 # Projeto Config - Automação de Projetos GCP
 
-Aplicação Go para automatizar a criação de projetos no GCP seguindo a estrutura definida pela Eletrobras.
+Aplicação Go para automatizar a criação de projetos no GCP seguindo a estrutura definida pela Axia Energia.
 
 ## 📋 Pré-requisitos
 
@@ -37,58 +37,126 @@ chmod +x projeto_config
 ### Sintaxe Básica
 
 ```bash
-./projeto_config -project <nome> [optional: -step <1-5>]
+./projeto_config <comando> <recurso> <nome> [flags]
 ```
+
+### Comandos
+
+- `create projeto <nome>`: cria a estrutura base (passo 1)
+- `update projeto <nome>`: executa passos de atualizacao (2, 3, 4 e/ou 5)
+- `get projeto <nome>`: lista informacoes basicas (resumo rapido)
+- `describe projeto <nome>`: exibe informacoes detalhadas completas
+- `delete projeto <nome>`: deleta toda a estrutura (reversao do passo 1)
 
 ### Exemplos
 
-**Executar TODOS os passos (1-4):**
+**Ajuda geral e contextual (`cobra`):**
 ```bash
-./projeto_config -project benner-cloud
+./projeto_config -h
+./projeto_config create -h
+./projeto_config update projeto -h
+./projeto_config get projeto -h
+./projeto_config describe projeto -h
+./projeto_config delete projeto -h
 ```
 
-**Passo 1 - Criar estrutura de pastas:**
+**Criar estrutura inicial (passo 1):**
 ```bash
-./projeto_config -project benner-cloud -step 1
+./projeto_config create projeto benner-cloud
 ```
 
-**Passo 2 - Adicionar labels (requer passo 1 já executado):**
+**Criar estrutura completa (passos 1, 2, 3 e 4):**
 ```bash
-./projeto_config -project benner-cloud -step 2
+./projeto_config create projeto benner-cloud --all
 ```
 
-**Passo 3 - Habilitar APIs (requer passo 1 já executado):**
+**Consultar informacoes basicas:**
 ```bash
-./projeto_config -project benner-cloud -step 3
+./projeto_config get projeto benner-cloud
 ```
 
-**Passo 4 - Atachar nas redes (requer passo 1 já executado):**
+**Consultar informacoes detalhadas (labels, APIs, billing, Shared VPC):**
 ```bash
-./projeto_config -project benner-cloud -step 4
+./projeto_config describe projeto benner-cloud
 ```
 
-**Passo 5 - Criar Service Accounts (requer passo 1 já executado):**
+**Atualizacao padrao (sem flags): executa labels + APIs + redes (passos 2, 3 e 4):**
 ```bash
-./projeto_config -project benner-cloud -step 5
+./projeto_config update projeto benner-cloud
 ```
 
-### Flags Disponíveis
+**Executar apenas labels (passo 2):**
+```bash
+./projeto_config update projeto benner-cloud --labels
+```
 
-| Flag | Padrão | Descrição |
-|------|--------|-----------|
-| `-project` | Obrigatório | Nome do projeto (ex: benner-cloud) |
-| `-parent-folder` | `fldr-scge` | ID ou nome da pasta pai (usado apenas no passo 1) |
-| `-org-id` | `727440331682` | ID da organização Eletrobras |
-| `-step` | Vazio (executa 1-4) | Qual passo executar (1-5). Se omitido, executa passos 1-4 |
-| `-help` | - | Mostra ajuda |
+**Executar apenas APIs (passo 3) com APIs opcionais especificas:**
+```bash
+./projeto_config update projeto benner-cloud --apis --optional-api secretmanager --optional-api firestore
+```
 
-**Importante:** 
-- **Se nenhuma flag `-step` for especificada**, executa **todos os 4 passos sequencialmente**
-- Se `-step` for especificado (1-4), executa **apenas aquele passo específico**
-- Se `-step 5` for especificado, executa **apenas o passo 5**
-- Os passos 2, 3 e 4 carregam automaticamente os dados dos projetos já criados no passo 1
-- **Billing Account é vinculada automaticamente** (01F7C9-60D131-20DC44) ao criar projetos no passo 1
-- Execute o passo 1 primeiro para criar a estrutura base
+**Executar passo 3 com todas as APIs opcionais:**
+```bash
+./projeto_config update projeto benner-cloud --apis --all-optional-apis
+```
+
+**Executar passo 4 (redes) isoladamente:**
+```bash
+./projeto_config update projeto benner-cloud --networks
+```
+
+**Executar passo 5 (service accounts) isoladamente:**
+```bash
+./projeto_config update projeto benner-cloud --service-accounts
+```
+
+**Executar todos os passos de update (2, 3, 4 e 5):**
+```bash
+./projeto_config update projeto benner-cloud --all
+```
+
+**Deletar projeto completo (com confirmacao interativa):**
+```bash
+./projeto_config delete projeto benner-cloud
+```
+
+**Deletar projeto sem confirmacao:**
+```bash
+./projeto_config delete projeto benner-cloud --yes
+```
+
+**Executar sem exibir resumo de comandos gcloud:**
+```bash
+./projeto_config create projeto benner-cloud --all --show-gcloud-commands=false
+```
+
+### Flags principais
+
+| Flag | Escopo | Padrão | Descrição |
+|------|--------|--------|-----------|
+| `--org-id` | global | `727440331682` | ID da organização Axia Energia |
+| `--parent-folder` | global/create | `fldr-scge` | ID ou nome da pasta pai (usado no passo 1) |
+| `--billing-account` | global/create | `01F7C9-60D131-20DC44` | Conta de billing vinculada ao criar projetos |
+| `--show-gcloud-commands` | global | `true` | Exibe resumo dos comandos `gcloud` ao final de cada passo |
+| `--all` | create | `false` | Executa passos 1, 2, 3 e 4 no `create` |
+| `--optional-api` | create/update | vazio | APIs opcionais do passo 3 (`artifactregistry`, `secretmanager`, `firestore`) |
+| `--all-optional-apis` | create/update | `false` | Inclui todas as APIs opcionais no passo 3 |
+| `--interactive-apis` | create/update | `false` | Faz perguntas interativas de APIs opcionais no passo 3 |
+| `--labels` | update | `false` | Executa passo 2 |
+| `--apis` | update | `false` | Executa passo 3 |
+| `--networks` | update | `false` | Executa passo 4 |
+| `--service-accounts` | update | `false` | Executa passo 5 |
+| `--all` | update | `false` | Executa passos 2, 3, 4 e 5 |
+| `--yes`, `-y` | delete | `false` | Pula confirmacao interativa ao deletar |
+
+**Importante:**
+- Se nenhum flag de acao for informado em `update`, o comportamento padrao executa passos **2, 3 e 4**.
+- O passo 5 (`--service-accounts`) continua opcional e nao e executado no fluxo padrao.
+- O passo 1 deve ser executado primeiro para criar a estrutura base.
+- `create --all` executa os passos **1, 2, 3 e 4** em uma unica chamada.
+- `--optional-api` aceita repeticao de flag e tambem lista separada por virgula.
+- O comando `delete` reverte completamente o passo 1 (shutdown de projetos + delecao de pastas).
+- Ao final de cada passo (1 a 5), a CLI exibe um resumo sequencial com os comandos `gcloud` executados para reproducao manual no shell.
 
 ## 📚 Passos de Automação
 
@@ -184,7 +252,7 @@ Para permitir a criação das chaves, o passo 5 executa em 4 fases:
 
 Essa abordagem em lote aumenta a confiabilidade e evita seguir para criação de chave antes da propagação real da policy.
 
-**Nota:** Este passo só é executado com `-step 5`.
+**Nota:** Este passo só é executado com `update --service-accounts` ou `update --all`.
 
 ## 📂 Estrutura do Projeto
 
@@ -234,7 +302,7 @@ gcloud resource-manager folders list --organization=727440331682
 Você precisa de permissões na organização. Peça admin para adicionar:
 ```bash
 gcloud organizations add-iam-policy-binding 727440331682 \
-  --member=user:seu-email@eletrobras.com \
+  --member=user:seu-email@axia.com.br \
   --role=roles/resourcemanager.folderCreator \
   --role=roles/resourcemanager.projectCreator
 ```
@@ -281,15 +349,15 @@ gcloud compute shared-vpc enable redes-spoke-prd-bd15
 **3. Garantir que o seu usuário tem role `roles/compute.admin` no host project:**
 ```bash
 gcloud projects add-iam-policy-binding redes-spoke-dev-002b \
-  --member=user:seu-email@eletrobras.com \
+  --member=user:seu-email@axia.com.br \
   --role=roles/compute.admin
   
 gcloud projects add-iam-policy-binding redes-spoke-qld-7e83 \
-  --member=user:seu-email@eletrobras.com \
+  --member=user:seu-email@axia.com.br \
   --role=roles/compute.admin
   
 gcloud projects add-iam-policy-binding redes-spoke-prd-bd15 \
-  --member=user:seu-email@eletrobras.com \
+  --member=user:seu-email@axia.com.br \
   --role=roles/compute.admin
 ```
 
@@ -315,6 +383,17 @@ GOOS=linux GOARCH=amd64 go build -o projeto_config main.go
 GOOS=windows GOARCH=amd64 go build -o projeto_config.exe main.go
 ```
 
+### Executar testes
+
+```bash
+go test ./...
+```
+
+Atualmente, os testes unitarios cobrem:
+- normalizacao e validacao de `--optional-api`
+- parsing de `--optional-api` com valores separados por virgula
+- validacao de uso de APIs opcionais no `create` sem `--all`
+
 ### Adicionar novos passos
 
 Crie novos arquivos em `internal/gcp/stepX_*.go` e implemente a função correspondente. Depois atualize `main.go` para integrá-la.
@@ -326,14 +405,14 @@ Crie novos arquivos em `internal/gcp/stepX_*.go` e implemente a função corresp
 - [x] ✅ Passo 3 - Habilitar APIs
 - [x] ✅ Passo 4 - Atachar às redes spokes
 - [x] ✅ Passo 5 - Criar service accounts e roles
-- [ ] Adicionar testes unitários
+- [x] ✅ Adicionar testes unitários
 - [ ] Adicionar arquivo de configuração YAML/JSON
 - [ ] Sistema de logging mais robusto
 - [ ] Validação de nomes de projeto
 
 ## 📄 Licença
 
-Projeto Eletrobras - Interno
+Projeto Axia Energia - Interno
 
 ## 👨‍💻 Suporte
 

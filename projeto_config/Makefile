@@ -34,7 +34,7 @@ build-mac:
 	@echo "✓ Binário macOS criado: $(BINARY_NAME)-mac"
 
 run: build
-	@./$(BINARY_NAME) -help
+	@./$(BINARY_NAME) -h
 
 clean:
 	@echo "Limpando binários..."

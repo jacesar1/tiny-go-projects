@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 )
 
 // GetBillingAccounts lista as contas de billing disponíveis
 func GetBillingAccounts() ([]map[string]interface{}, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"billing", "accounts", "list",
 		"--format=json",
 	)
@@ -34,8 +32,7 @@ func GetBillingAccounts() ([]map[string]interface{}, error) {
 
 // LinkBillingAccount vincula uma conta de billing a um projeto
 func LinkBillingAccount(projectID, billingAccountID string) error {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"billing", "projects", "link", projectID,
 		fmt.Sprintf("--billing-account=%s", billingAccountID),
 	)
@@ -54,8 +51,7 @@ func LinkBillingAccount(projectID, billingAccountID string) error {
 
 // GetProjectBillingAccount retorna a conta de billing vinculada a um projeto
 func GetProjectBillingAccount(projectID string) (string, error) {
-	cmd := exec.Command(
-		"gcloud",
+	cmd := newGCloudCommand(
 		"billing", "projects", "describe", projectID,
 		"--format=value(billingAccountName)",
 	)

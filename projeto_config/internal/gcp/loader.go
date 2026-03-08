@@ -3,6 +3,7 @@ package gcp
 import (
 	"fmt"
 	"projeto_config/internal/models"
+	"strings"
 )
 
 // LoadExistingProject busca os dados de um projeto já criado no GCP
@@ -27,6 +28,11 @@ func LoadExistingProject(projectName string) (*models.GCPProject, error) {
 		// Tentar buscar o projeto
 		projectInfo, err := GetProjectByID(projectID)
 		if err != nil {
+			errMsg := err.Error()
+			// Se for crash do gcloud, retornar erro fatal em vez de continuar
+			if strings.Contains(errMsg, "gcloud CLI crashou") {
+				return nil, fmt.Errorf("❌ ERRO CRÍTICO: %v", err)
+			}
 			fmt.Printf("   ⚠️  Projeto %s não encontrado: %v\n", projectID, err)
 			continue
 		}
