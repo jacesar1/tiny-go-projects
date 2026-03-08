@@ -251,18 +251,27 @@ func resetPoliciesForAllProjects(envConfigs []envConfig, constraints []string) e
 // createKeyWithRetry tenta criar uma chave com retry em caso de falha
 func createKeyWithRetry(projectID, accountID, outputPath string, maxAttempts int, delay time.Duration) error {
 	var lastErr error
+	progressShown := false
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		err := CreateServiceAccountKey(projectID, accountID, outputPath)
 		if err == nil {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return nil
 		}
 
 		lastErr = err
 		if attempt < maxAttempts {
-			fmt.Printf("      ⚠️  Tentativa %d falhou, aguardando %v antes de tentar novamente...\n", attempt, delay)
+			printInlineProgress("      ⏳ Aguardando nova tentativa para chave da service account %s (%d/%d)...", accountID, attempt, maxAttempts)
+			progressShown = true
 			time.Sleep(delay)
 		}
+	}
+
+	if progressShown {
+		clearInlineProgress()
 	}
 
 	return fmt.Errorf("falhou apos %d tentativas: %w", maxAttempts, lastErr)

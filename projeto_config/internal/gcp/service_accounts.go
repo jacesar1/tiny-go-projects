@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+const inlineProgressClearWidth = 110
+
+func printInlineProgress(format string, args ...interface{}) {
+	fmt.Printf("\r"+format, args...)
+}
+
+func clearInlineProgress() {
+	fmt.Printf("\r%*s\r", inlineProgressClearWidth, "")
+}
+
 // ServiceAccountEmail monta o email completo de uma service account.
 func ServiceAccountEmail(accountID, projectID string) string {
 	return fmt.Sprintf("%s@%s.iam.gserviceaccount.com", accountID, projectID)
@@ -42,15 +52,33 @@ func CreateServiceAccount(projectID, accountID, displayName string) error {
 
 // WaitForServiceAccount aguarda a propagacao da service account no IAM.
 func WaitForServiceAccount(projectID, accountID string, maxAttempts int, delay time.Duration) error {
+	progressShown := false
+
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		exists, err := serviceAccountExists(projectID, accountID)
 		if err != nil {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return err
 		}
 		if exists {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return nil
 		}
+
+		if attempt < maxAttempts {
+			printInlineProgress("      ⏳ Aguardando propagacao da service account %s (%d/%d)...", accountID, attempt, maxAttempts)
+			progressShown = true
+		}
+
 		time.Sleep(delay)
+	}
+
+	if progressShown {
+		clearInlineProgress()
 	}
 
 	return fmt.Errorf("service account %s ainda nao disponivel apos %d tentativas", accountID, maxAttempts)
@@ -78,21 +106,34 @@ func AddProjectIamBinding(projectID, member, role string) error {
 // AddProjectIamBindingWithRetry repete o binding quando a SA ainda nao propagou no IAM.
 func AddProjectIamBindingWithRetry(projectID, member, role string, maxAttempts int, delay time.Duration) error {
 	var lastErr error
+	progressShown := false
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		err := AddProjectIamBinding(projectID, member, role)
 		if err == nil {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return nil
 		}
 
 		lastErr = err
 		if !isServiceAccountNotFoundInBindingError(err) {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return err
 		}
 
 		if attempt < maxAttempts {
+			printInlineProgress("      ⏳ Aguardando IAM reconhecer a service account para binding (%d/%d)...", attempt, maxAttempts)
+			progressShown = true
 			time.Sleep(delay)
 		}
+	}
+
+	if progressShown {
+		clearInlineProgress()
 	}
 
 	return fmt.Errorf("falha ao adicionar binding apos %d tentativas: %w", maxAttempts, lastErr)
@@ -363,15 +404,32 @@ func IsProjectOrgPolicyEnforced(projectID, constraint string) (bool, error) {
 
 // WaitForPolicyEnforcementState aguarda a policy atingir o estado efetivo esperado.
 func WaitForPolicyEnforcementState(projectID, constraint string, wantEnforced bool, maxAttempts int, delay time.Duration) error {
+	progressShown := false
+
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		enforced, err := IsProjectOrgPolicyEnforced(projectID, constraint)
 		if err != nil {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return err
 		}
 		if enforced == wantEnforced {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return nil
 		}
+
+		if attempt < maxAttempts {
+			printInlineProgress("      ⏳ Aguardando policy %s enforced=%t (%d/%d)...", constraint, wantEnforced, attempt, maxAttempts)
+			progressShown = true
+		}
 		time.Sleep(delay)
+	}
+
+	if progressShown {
+		clearInlineProgress()
 	}
 
 	return fmt.Errorf("policy %s no projeto %s nao atingiu enforced=%t apos %d tentativas", constraint, projectID, wantEnforced, maxAttempts)
@@ -423,15 +481,32 @@ func HasProjectOrgPolicyOverride(projectID, constraint string) (bool, error) {
 
 // WaitForPolicyReset aguarda remocao do override local da policy.
 func WaitForPolicyReset(projectID, constraint string, maxAttempts int, delay time.Duration) error {
+	progressShown := false
+
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		hasOverride, err := HasProjectOrgPolicyOverride(projectID, constraint)
 		if err != nil {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return err
 		}
 		if !hasOverride {
+			if progressShown {
+				clearInlineProgress()
+			}
 			return nil
 		}
+
+		if attempt < maxAttempts {
+			printInlineProgress("      ⏳ Aguardando reset da policy %s (%d/%d)...", constraint, attempt, maxAttempts)
+			progressShown = true
+		}
 		time.Sleep(delay)
+	}
+
+	if progressShown {
+		clearInlineProgress()
 	}
 
 	return fmt.Errorf("policy %s no projeto %s ainda possui override apos %d tentativas", constraint, projectID, maxAttempts)

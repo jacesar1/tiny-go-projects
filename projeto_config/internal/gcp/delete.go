@@ -43,9 +43,14 @@ func GetProjectState(projectID string) (string, error) {
 
 // WaitForProjectDeletion aguarda até que o projeto seja efetivamente deletado
 func WaitForProjectDeletion(projectID string, maxAttempts int, delay time.Duration) error {
+	progressShown := false
+
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		state, err := GetProjectState(projectID)
 		if err != nil {
+			if progressShown {
+				clearInlineProgress()
+			}
 			// Se GetProjectByID falhar, projeto pode já ter sido deletado
 			if strings.Contains(err.Error(), "NOT_FOUND") || strings.Contains(err.Error(), "does not exist") {
 				return nil
@@ -55,10 +60,15 @@ func WaitForProjectDeletion(projectID string, maxAttempts int, delay time.Durati
 
 		if state == "DELETE_IN_PROGRESS" || state == "DELETE_REQUESTED" {
 			if attempt < maxAttempts {
-				fmt.Printf("      ⏳ Aguardando conclusão da deleção (tentativa %d/%d)...\n", attempt, maxAttempts)
+				printInlineProgress("      ⏳ Aguardando conclusao da delecao (%d/%d)...", attempt, maxAttempts)
+				progressShown = true
 				time.Sleep(delay)
 				continue
 			}
+		}
+
+		if progressShown {
+			clearInlineProgress()
 		}
 
 		// Se chegou aqui e ainda está ACTIVE, algo deu errado
