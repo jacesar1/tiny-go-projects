@@ -60,6 +60,13 @@ chmod +x projeto_config
 ./projeto_config delete projeto -h
 ```
 
+**Verificar versão da aplicação:**
+```bash
+./projeto_config --version
+# ou
+./projeto_config -v
+```
+
 **Criar estrutura inicial (passo 1):**
 ```bash
 ./projeto_config create projeto benner-cloud
@@ -148,6 +155,7 @@ chmod +x projeto_config
 | `--service-accounts` | update | `false` | Executa passo 5 |
 | `--all` | update | `false` | Executa passos 2, 3, 4 e 5 |
 | `--yes`, `-y` | delete | `false` | Pula confirmacao interativa ao deletar |
+| `--version`, `-v` | global | - | Exibe a versão da aplicação |
 
 **Importante:**
 - Se nenhum flag de acao for informado em `update`, o comportamento padrao executa passos **2, 3 e 4**.
@@ -157,6 +165,31 @@ chmod +x projeto_config
 - `--optional-api` aceita repeticao de flag e tambem lista separada por virgula.
 - O comando `delete` reverte completamente o passo 1 (shutdown de projetos + delecao de pastas).
 - Ao final de cada passo (1 a 5), a CLI exibe um resumo sequencial com os comandos `gcloud` executados para reproducao manual no shell.
+
+### Autocompletar (comando `completion`)
+
+O comando `completion` gera scripts para autocompletar comandos e flags no shell. Suporta:
+- **bash**: `./projeto_config completion bash > /etc/bash_completion.d/projeto_config`
+- **zsh**: `./projeto_config completion zsh > "${fpath[1]}/_projeto_config"`
+- **fish**: `./projeto_config completion fish > ~/.config/fish/completions/projeto_config.fish`
+- **powershell**: `./projeto_config completion powershell | Out-String | Invoke-Expression`
+
+**Exemplo de uso:**
+```bash
+# Para Bash (adicionar ao ~/.bashrc ou executar manualmente)
+source <(./projeto_config completion bash)
+
+# Para Zsh (adicionar ao ~/.zshrc)
+autoload -Uz compinit && compinit
+source <(./projeto_config completion zsh)
+```
+
+Após configurar, você poderá usar TAB para autocompletar comandos, subcomandos e flags:
+```bash
+./projeto_config <TAB>        # Lista: completion, create, delete, describe, get, update
+./projeto_config create <TAB> # Lista: projeto
+./projeto_config --<TAB>      # Lista todas as flags disponíveis
+```
 
 ## 📚 Passos de Automação
 

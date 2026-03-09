@@ -10,14 +10,18 @@ import (
 )
 
 const (
+	// Version da aplicação (formato semântico: MAJOR.MINOR.PATCH)
+	Version = "1.0.0"
+
 	defaultOrgID          = "727440331682"
 	defaultParentFolderID = "fldr-scge"
 	defaultBillingAccount = "01F7C9-60D131-20DC44"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "projeto_config",
-	Short: "Automacao de projetos GCP da Axia Energia",
+	Use:     "projeto_config",
+	Short:   "Automacao de projetos GCP da Axia Energia",
+	Version: Version,
 	Long: `CLI para criar e atualizar projetos GCP seguindo o padrao da Axia Energia.
 
 Exemplos:
