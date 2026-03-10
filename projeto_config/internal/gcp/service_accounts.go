@@ -27,7 +27,10 @@ func ServiceAccountEmail(accountID, projectID string) string {
 func CreateServiceAccount(projectID, accountID, displayName string) error {
 	exists, err := serviceAccountExists(projectID, accountID)
 	if err != nil {
-		return err
+		if !isServiceAccountGetPermissionDenied(err) {
+			return err
+		}
+		fmt.Printf("      ⚠️  Sem permissão para consultar service account %s. Tentando criar diretamente...\n", accountID)
 	}
 	if exists {
 		return nil
@@ -44,7 +47,11 @@ func CreateServiceAccount(projectID, accountID, displayName string) error {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("erro ao criar service account %s no projeto %s: %w\nStderr: %s", accountID, projectID, err, stderr.String())
+		stderrStr := stderr.String()
+		if strings.Contains(strings.ToLower(stderrStr), "already exists") || strings.Contains(stderrStr, "ALREADY_EXISTS") {
+			return nil
+		}
+		return fmt.Errorf("erro ao criar service account %s no projeto %s: %w\nStderr: %s", accountID, projectID, err, stderrStr)
 	}
 
 	return nil
@@ -57,6 +64,13 @@ func WaitForServiceAccount(projectID, accountID string, maxAttempts int, delay t
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		exists, err := serviceAccountExists(projectID, accountID)
 		if err != nil {
+			if isServiceAccountGetPermissionDenied(err) {
+				if progressShown {
+					clearInlineProgress()
+				}
+				fmt.Printf("      ⚠️  Sem permissão para consultar propagação da service account %s. Seguindo sem espera ativa.\n", accountID)
+				return nil
+			}
 			if progressShown {
 				clearInlineProgress()
 			}
@@ -528,8 +542,28 @@ func serviceAccountExists(projectID, accountID string) (bool, error) {
 		if strings.Contains(strings.ToLower(stderrStr), "not found") || strings.Contains(stderrStr, "NOT_FOUND") {
 			return false, nil
 		}
+		if strings.Contains(strings.ToLower(stderrStr), "permission_denied") ||
+			strings.Contains(strings.ToLower(stderrStr), "permission '") ||
+			strings.Contains(strings.ToLower(stderrStr), "does not have permission") {
+			return false, fmt.Errorf("sem permissao para consultar service account %s: %w\nStderr: %s", email, err, stderrStr)
+		}
 		return false, fmt.Errorf("erro ao verificar service account %s: %w\nStderr: %s", email, err, stderrStr)
 	}
 
 	return true, nil
+}
+
+func isServiceAccountGetPermissionDenied(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	if strings.Contains(errMsg, "sem permissao para consultar service account") {
+		return true
+	}
+
+	return strings.Contains(errMsg, "iam.serviceaccounts.get") ||
+		strings.Contains(errMsg, "permission_denied") ||
+		strings.Contains(errMsg, "does not have permission")
 }

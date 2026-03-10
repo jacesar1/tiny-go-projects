@@ -27,14 +27,22 @@ var rootCmd = &cobra.Command{
 Exemplos:
   projeto_config create projeto benner-cloud
 	projeto_config create projeto benner-cloud --all
+	projeto_config create projeto benner-cloud --all --env qld --env prd
+	projeto_config create projeto benner-cloud --all --interactive-envs
   projeto_config update projeto benner-cloud --labels
 	projeto_config update projeto benner-cloud --networks
 	projeto_config update projeto benner-cloud --service-accounts
+	projeto_config update projeto benner-cloud --all --env qld
+	projeto_config update projeto benner-cloud --all --interactive-envs
 	projeto_config update projeto benner-cloud --apis --optional-api secretmanager
 	projeto_config update projeto benner-cloud --apis --optional-api secretmanager,firestore
 	projeto_config get projeto benner-cloud
 	projeto_config describe projeto benner-cloud
-	projeto_config delete projeto benner-cloud --yes`,
+	projeto_config delete projeto benner-cloud --yes
+
+Ajuda detalhada por recurso:
+  projeto_config create projeto -h
+  projeto_config update projeto -h`,
 	SilenceUsage: true,
 }
 

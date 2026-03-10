@@ -10,6 +10,8 @@ type ProjectConfig struct {
 	ParentFolderID string
 	// ID da conta de billing (ex: 01F7C9-60D131-20DC44) - opcional
 	BillingAccountID string
+	// Ambientes alvo para create/update parcial (ex: dev, qld, prd)
+	TargetEnvironments []string
 }
 
 // GCPEnvironment representa um ambiente (dev, qld, prd)

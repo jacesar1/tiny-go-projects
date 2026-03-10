@@ -71,6 +71,11 @@ func Step5CreateServiceAccounts(project *models.GCPProject) (retErr error) {
 		}
 
 		fmt.Printf("🔧 Configurando service accounts no projeto: %s (%s)\n", env.ProjectID, env.Name)
+		fmt.Printf("   🔌 Garantindo API obrigatoria: secretmanager.googleapis.com\n")
+		if err := EnableAPI(env.ProjectID, "secretmanager.googleapis.com"); err != nil {
+			return fmt.Errorf("erro ao garantir Secret Manager API no projeto %s: %w", env.ProjectID, err)
+		}
+		fmt.Printf("   ✓ Secret Manager API habilitada\n")
 
 		gitlabAccountID := fmt.Sprintf("sa-%s-git", project.Name)
 		gsaAccountID := fmt.Sprintf("sa-%s-%s", project.Name, env.Name)

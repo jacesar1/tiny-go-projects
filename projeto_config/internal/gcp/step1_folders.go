@@ -3,6 +3,7 @@ package gcp
 import (
 	"fmt"
 	"projeto_config/internal/models"
+	"strconv"
 	"strings"
 )
 
@@ -46,17 +47,17 @@ func Step1CreateFolderStructure(config *models.ProjectConfig) (*models.GCPProjec
 		fmt.Printf("   ✓ ID encontrado: %s\n\n", parentFolderID)
 	}
 
-	// Criar pasta principal: fldr-<nome do projeto>
+	// Garantir pasta principal: fldr-<nome do projeto>
 	mainFolderName := fmt.Sprintf("fldr-%s", config.ProjectName)
-	fmt.Printf("📁 Criando pasta principal: %s\n", mainFolderName)
-	mainFolderID, err := CreateFolder(parentFolderID, mainFolderName)
+	fmt.Printf("📁 Garantindo pasta principal: %s\n", mainFolderName)
+	mainFolderID, err := ensureFolder(parentFolderID, mainFolderName)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("   ✓ Folder ID: %s\n\n", mainFolderID)
 
-	// Criar as subpastas para cada ambiente (dev, qld, prd)
-	environments := []string{"dev", "qld", "prd"}
+	// Criar as subpastas para cada ambiente selecionado (padrao: dev, qld, prd)
+	environments := selectedCreateEnvironments(config.TargetEnvironments)
 	gcpProject := &models.GCPProject{
 		Name: config.ProjectName,
 		Dev:  &models.GCPEnvironment{Name: "dev"},
@@ -71,10 +72,10 @@ func Step1CreateFolderStructure(config *models.ProjectConfig) (*models.GCPProjec
 	}
 
 	for _, env := range environments {
-		// Criar pasta de ambiente
+		// Garantir pasta de ambiente
 		envFolderName := fmt.Sprintf("fldr-%s", env)
-		fmt.Printf("📁 Criando pasta de ambiente: fldr-%s/%s\n", config.ProjectName, envFolderName)
-		envFolderID, err := CreateFolder(mainFolderID, envFolderName)
+		fmt.Printf("📁 Garantindo pasta de ambiente: fldr-%s/%s\n", config.ProjectName, envFolderName)
+		envFolderID, err := ensureFolder(mainFolderID, envFolderName)
 		if err != nil {
 			return nil, err
 		}
@@ -83,13 +84,13 @@ func Step1CreateFolderStructure(config *models.ProjectConfig) (*models.GCPProjec
 		// Armazenar Folder ID
 		envMap[env].FolderID = envFolderID
 
-		// Criar projeto GCP dentro da pasta de ambiente
+		// Garantir projeto GCP dentro da pasta de ambiente
 		projectName := fmt.Sprintf("elet-%s-%s", config.ProjectName, env)
 		projectID := strings.ReplaceAll(projectName, "_", "-")
 		projectID = strings.ReplaceAll(projectID, ".", "-")
 
-		fmt.Printf("   📊 Criando projeto GCP: %s (ID: %s)\n", projectName, projectID)
-		createdProjectID, err := CreateProject(projectID, projectName, envFolderID)
+		fmt.Printf("   📊 Garantindo projeto GCP: %s (ID: %s)\n", projectName, projectID)
+		createdProjectID, err := ensureProject(projectID, projectName, envFolderID)
 		if err != nil {
 			return nil, err
 		}
@@ -116,12 +117,94 @@ func Step1CreateFolderStructure(config *models.ProjectConfig) (*models.GCPProjec
 	return gcpProject, nil
 }
 
+func selectedCreateEnvironments(selected []string) []string {
+	if len(selected) == 0 {
+		return []string{"dev", "qld", "prd"}
+	}
+
+	ordered := []string{"dev", "qld", "prd"}
+	set := map[string]struct{}{}
+	for _, env := range selected {
+		set[env] = struct{}{}
+	}
+
+	result := make([]string, 0, len(ordered))
+	for _, env := range ordered {
+		if _, ok := set[env]; ok {
+			result = append(result, env)
+		}
+	}
+
+	return result
+}
+
+func ensureFolder(parentFolderID, displayName string) (string, error) {
+	folderID, err := FindFolderIDByName(parentFolderID, displayName)
+	if err == nil {
+		fmt.Printf("   ↺ Pasta já existe, reutilizando\n")
+		return folderID, nil
+	}
+
+	if !strings.Contains(strings.ToLower(err.Error()), "não encontrada") {
+		return "", err
+	}
+
+	return CreateFolder(parentFolderID, displayName)
+}
+
+func ensureProject(projectID, displayName, expectedFolderID string) (string, error) {
+	projectInfo, err := GetProjectByID(projectID)
+	if err == nil {
+		currentFolderID := extractParentFolderID(projectInfo)
+		if currentFolderID != "" && currentFolderID != expectedFolderID {
+			return "", fmt.Errorf("projeto %s já existe, mas está na pasta %s (esperado: %s)", projectID, currentFolderID, expectedFolderID)
+		}
+
+		fmt.Printf("      ↺ Projeto já existe, reutilizando\n")
+		return projectID, nil
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	isNotFound := strings.Contains(errMsg, "não encontrado")
+	isAmbiguousPermission := strings.Contains(errMsg, "does not have permission") || strings.Contains(errMsg, "caller does not have permission")
+
+	if !isNotFound && !isAmbiguousPermission {
+		return "", err
+	}
+
+	if isAmbiguousPermission {
+		fmt.Printf("      ⚠️  Não foi possível confirmar existência via describe (permissão). Tentando criar projeto...\n")
+	}
+
+	return CreateProject(projectID, displayName, expectedFolderID)
+}
+
+func extractParentFolderID(projectInfo map[string]interface{}) string {
+	parent, ok := projectInfo["parent"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	if id, ok := parent["id"].(string); ok && id != "" {
+		return id
+	}
+
+	if idFloat, ok := parent["id"].(float64); ok {
+		return strconv.FormatInt(int64(idFloat), 10)
+	}
+
+	return ""
+}
+
 // PrintProjectStructure exibe a estrutura criada
 func PrintProjectStructure(project *models.GCPProject) {
 	fmt.Printf("📊 Estrutura criada:\n\n")
 	fmt.Printf("fldr-%s/\n", project.Name)
 
 	for _, env := range []*models.GCPEnvironment{project.Dev, project.Qld, project.Prd} {
+		if env == nil || (env.FolderID == "" && env.ProjectID == "") {
+			continue
+		}
 		fmt.Printf("├── fldr-%s/\n", env.Name)
 		fmt.Printf("│   └── elet-%s-%s\n", project.Name, env.Name)
 		fmt.Printf("│       ├── Folder ID: %s\n", env.FolderID)

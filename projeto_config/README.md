@@ -77,6 +77,17 @@ chmod +x projeto_config
 ./projeto_config create projeto benner-cloud --all
 ```
 
+**Criar apenas ambientes selecionados:**
+```bash
+./projeto_config create projeto benner-cloud --all --env qld --env prd
+./projeto_config create projeto benner-cloud --all --env dev,qld
+```
+
+**Selecionar ambientes interativamente no create:**
+```bash
+./projeto_config create projeto benner-cloud --all --interactive-envs
+```
+
 **Consultar informacoes basicas:**
 ```bash
 ./projeto_config get projeto benner-cloud
@@ -122,6 +133,17 @@ chmod +x projeto_config
 ./projeto_config update projeto benner-cloud --all
 ```
 
+**Executar update apenas para ambientes selecionados:**
+```bash
+./projeto_config update projeto benner-cloud --all --env qld --env prd
+./projeto_config update projeto benner-cloud --all --env dev,qld
+```
+
+**Selecionar ambientes interativamente no update:**
+```bash
+./projeto_config update projeto benner-cloud --all --interactive-envs
+```
+
 **Deletar projeto completo (com confirmacao interativa):**
 ```bash
 ./projeto_config delete projeto benner-cloud
@@ -146,6 +168,8 @@ chmod +x projeto_config
 | `--billing-account` | global/create | `01F7C9-60D131-20DC44` | Conta de billing vinculada ao criar projetos |
 | `--show-gcloud-commands` | global | `true` | Exibe resumo dos comandos `gcloud` ao final de cada passo |
 | `--all` | create | `false` | Executa passos 1, 2, 3 e 4 no `create` |
+| `--env` | create/update | vazio | Ambientes alvo (`dev`, `qld`, `prd`). Aceita repetição e vírgula |
+| `--interactive-envs` | create/update | `false` | Faz perguntas interativas para escolher ambientes alvo |
 | `--optional-api` | create/update | vazio | APIs opcionais do passo 3 (`artifactregistry`, `secretmanager`, `firestore`) |
 | `--all-optional-apis` | create/update | `false` | Inclui todas as APIs opcionais no passo 3 |
 | `--interactive-apis` | create/update | `false` | Faz perguntas interativas de APIs opcionais no passo 3 |
